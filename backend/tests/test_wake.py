@@ -85,10 +85,25 @@ def test_threshold_setting(monkeypatch):
 
 
 def test_missing_models_say_how_to_get_them(monkeypatch, tmp_path):
+    import sys
+    import types
+    # pretend the optional packages are installed, so this test does not depend on the machine
+    monkeypatch.setitem(sys.modules, "openwakeword", types.ModuleType("openwakeword"))
     monkeypatch.setenv("WAKE_ENABLED", "true")
     monkeypatch.setenv("WAKE_MODEL_DIR", str(tmp_path))
     ok, reason = wake.availability()
     assert not ok and "setup_wake" in reason and wake.KEYWORD_FILE in reason
+
+
+def test_missing_packages_say_how_to_install_them(monkeypatch, tmp_path):
+    import sys
+    monkeypatch.setitem(sys.modules, "openwakeword", None)          # makes `import openwakeword` fail
+    monkeypatch.setenv("WAKE_ENABLED", "true")
+    monkeypatch.setenv("WAKE_MODEL_DIR", str(tmp_path))
+    ok, reason = wake.availability()
+    assert not ok and "requirements-wake.txt" in reason
+    with pytest.raises(wake.WakeUnavailable, match="requirements-wake.txt"):
+        wake.new_session()
 
 
 def test_a_broken_model_file_is_unavailable_not_a_crash(monkeypatch, tmp_path):
